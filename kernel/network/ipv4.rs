@@ -7,7 +7,7 @@ use core::mem;
 
 use network::common::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(packed)]
 pub struct Ipv4Header {
     pub ver_hlen: u8,
@@ -22,6 +22,7 @@ pub struct Ipv4Header {
     pub dst: Ipv4Addr,
 }
 
+#[derive(Debug)]
 pub struct Ipv4 {
     pub header: Ipv4Header,
     pub options: Vec<u8>,

@@ -64,6 +64,7 @@ impl IcmpScheme {
             loop {
                 let mut bytes = [0; 8192];
                 if let Ok(count) = ip.read(&mut bytes) {
+                    debugln!("Try icmp parse {}", count);
                     if let Some(message) = Icmp::from_bytes(bytes[.. count].to_vec()) {
                         if message.header._type == 0x08 {
                             let mut response = Icmp {

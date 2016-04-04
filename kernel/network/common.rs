@@ -11,7 +11,7 @@ pub trait ToBytes {
     fn to_bytes(&self) -> Vec<u8>;
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[allow(non_camel_case_types)]
 pub struct n16 {
     pub bytes: [u8; 2],
@@ -32,7 +32,7 @@ impl n16 {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[allow(non_camel_case_types)]
 pub struct n32 {
     pub bytes: [u8; 4],
@@ -56,7 +56,7 @@ impl n32 {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct MacAddr {
     pub bytes: [u8; 6],
 }
@@ -108,7 +108,7 @@ pub static BROADCAST_MAC_ADDR: MacAddr = MacAddr { bytes: [0xFF, 0xFF, 0xFF, 0xF
 
 pub static mut MAC_ADDR: MacAddr = MacAddr { bytes: [0x00, 0x00, 0x00, 0x00, 0x00, 0x00] };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Ipv4Addr {
     pub bytes: [u8; 4],
 }
@@ -156,7 +156,7 @@ impl Ipv4Addr {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Ipv6Addr {
     pub bytes: [u8; 16],
 }
@@ -180,7 +180,7 @@ pub static BROADCAST_IP_ADDR: Ipv4Addr = Ipv4Addr { bytes: [10, 85, 85, 255] };
 
 pub static IP_ADDR: Ipv4Addr = Ipv4Addr { bytes: [10, 85, 85, 2] };
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct Checksum {
     pub data: u16,
 }

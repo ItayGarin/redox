@@ -196,6 +196,8 @@ impl Rtl8139 {
             //let frame_status = ptr::read((receive_buffer + capr) as *const u16) as usize;
             let frame_len = ptr::read((receive_buffer + capr + 2) as *const u16) as usize;
 
+            debugln!("Receive {}", frame_len);
+
             self.inbound.push_back(Vec::from(slice::from_raw_parts(frame_addr as *const u8, frame_len - 4)));
 
             capr = capr + frame_len + 4;
@@ -212,6 +214,8 @@ impl Rtl8139 {
         while let Some(bytes) = self.outbound.pop_front() {
             if let Some(ref mut txd) = self.txds.get_mut(self.txd_i) {
                 if bytes.len() < 4096 {
+                    debugln!("Send {}", bytes.len());
+
                     while !txd.status_port.readf(RTL8139_TSR_OWN) {}
 
                     ::memcpy(txd.buffer as *mut u8, bytes.as_ptr(), bytes.len());
@@ -221,13 +225,10 @@ impl Rtl8139 {
 
                     self.txd_i = (self.txd_i + 1) % 4;
                 } else {
-                    debug::dl();
-                    debug::d("RTL8139: Frame too long for transmit: ");
-                    debug::dd(bytes.len());
-                    debug::dl();
+                    debugln!("RTL8139: Frame too long for transmit: {}", bytes.len());
                 }
             } else {
-                debug::d("RTL8139: TXD Overflow!\n");
+                debugln!("RTL8139: TXD Overflow!");
                 self.txd_i = 0;
             }
         }

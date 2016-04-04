@@ -13,7 +13,7 @@ use network::common::{n16, Checksum, Ipv4Addr, IP_ADDR, FromBytes, ToBytes};
 
 use system::error::{Error, Result, ENOENT};
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(packed)]
 pub struct UdpHeader {
     pub src: n16,
@@ -22,6 +22,7 @@ pub struct UdpHeader {
     pub checksum: Checksum,
 }
 
+#[derive(Debug)]
 pub struct Udp {
     pub header: UdpHeader,
     pub data: Vec<u8>,
@@ -65,6 +66,7 @@ pub struct UdpResource {
 
 impl Resource for UdpResource {
     fn dup(&self) -> Result<Box<Resource>> {
+        debugln!("Dup udp");
         match self.ip.dup() {
             Ok(ip) => {
                 Ok(Box::new(UdpResource {
@@ -100,6 +102,7 @@ impl Resource for UdpResource {
             while i < buf.len() && i < bytes.len() {
                 buf[i] = bytes[i];
             }
+            debugln!("Return UDP: {}", i);
             return Ok(i);
         }
 
@@ -107,7 +110,9 @@ impl Resource for UdpResource {
             let mut bytes = [0; 8192];
             match self.ip.read(&mut bytes) {
                 Ok(count) => {
+                    debugln!("Received: {}", bytes.len());
                     if let Some(datagram) = Udp::from_bytes(bytes[.. count].to_vec()) {
+                        debugln!("Got UDP: {:?}", datagram);
                         if datagram.header.dst.get() == self.host_port &&
                            datagram.header.src.get() == self.peer_port {
                             // TODO: Allow splitting
@@ -115,6 +120,7 @@ impl Resource for UdpResource {
                             while i < buf.len() && i < datagram.data.len() {
                                 buf[i] = datagram.data[i];
                             }
+                            debugln!("Return UDP: {}", i);
                             return Ok(i);
                         }
                     }
@@ -165,6 +171,12 @@ impl Resource for UdpResource {
     }
 }
 
+impl Drop for UdpResource {
+    fn drop(&mut self) {
+        debugln!("Drop udp");
+    }
+}
+
 /// UDP UdpScheme
 pub struct UdpScheme;
 
@@ -194,6 +206,7 @@ impl KScheme for UdpScheme {
                                     let ip_remote = ip_reference.split('/').next().unwrap_or("");
                                     let peer_addr = ip_remote.split(':').next().unwrap_or("");
 
+                                    debugln!("Open UDP (listener)");
                                     return Ok(Box::new(UdpResource {
                                         ip: ip,
                                         data: datagram.data,
@@ -215,6 +228,7 @@ impl KScheme for UdpScheme {
                 let host_port = (rand() % 32768 + 32768) as u16;
 
                 if let Ok(ip) = Url::from_str(&format!("ip:{}/11", peer_addr)).unwrap().open() {
+                    debugln!("Open UDP (remote)");
                     return Ok(Box::new(UdpResource {
                         ip: ip,
                         data: Vec::new(),

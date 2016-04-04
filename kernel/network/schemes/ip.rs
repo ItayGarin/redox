@@ -59,6 +59,7 @@ impl Resource for IpResource {
                 *b = *d;
             }
 
+            debugln!("Return IP: {}", data.len());
             return Ok(cmp::min(buf.len(), data.len()));
         }
 
@@ -66,13 +67,15 @@ impl Resource for IpResource {
             let mut bytes = [0; 8192];
             match self.link.read(&mut bytes) {
                 Ok(count) => {
+                    debugln!("Trying ip parse {}", count);
                     if let Some(packet) = Ipv4::from_bytes(bytes[.. count].to_vec()) {
+                        debugln!("Got IP: {:?}", packet);
                         if packet.header.proto == self.proto && packet.header.dst.equals(IP_ADDR) &&
                            packet.header.src.equals(self.peer_addr) {
                             for (b, d) in buf.iter_mut().zip(packet.data.iter()) {
                                 *b = *d;
                             }
-
+                            debugln!("Return IP: {}", packet.data.len());
                             return Ok(cmp::min(buf.len(), packet.data.len()));
                         }
                     }

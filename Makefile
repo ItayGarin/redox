@@ -181,6 +181,7 @@ filesystem/bin/%: drivers/%/main.rs $(BUILD)/libstd.rlib $(BUILD)/libio.rlib
 	$(RUSTC) $(RUSTCFLAGS) --crate-type bin -o $@ $<
 
 drivers: \
+	filesystem/bin/dnsd \
 	filesystem/bin/seriald
 
 $(BUILD)/libtermion.rlib: crates/termion/src/lib.rs crates/termion/src/*.rs $(BUILD)/libstd.rlib

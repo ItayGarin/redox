@@ -7,7 +7,7 @@ use core::mem;
 
 use network::common::*;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 #[repr(packed)]
 pub struct EthernetIIHeader {
     pub dst: MacAddr,
@@ -15,6 +15,7 @@ pub struct EthernetIIHeader {
     pub ethertype: n16,
 }
 
+#[derive(Debug)]
 pub struct EthernetII {
     pub header: EthernetIIHeader,
     pub data: Vec<u8>,

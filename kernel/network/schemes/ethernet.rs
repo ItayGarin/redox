@@ -60,6 +60,8 @@ impl Resource for EthernetResource {
                 *b = *d;
             }
 
+            debugln!("Receive ethernet {}", data.len());
+
             return Ok(cmp::min(buf.len(), data.len()));
         }
 
@@ -68,6 +70,7 @@ impl Resource for EthernetResource {
             match self.network.read(&mut bytes) {
                 Ok(count) => {
                     if let Some(frame) = EthernetII::from_bytes(bytes[.. count].to_vec()) {
+                        debugln!("Ethernet {:?}", frame);
                         if frame.header.ethertype.get() == self.ethertype && (unsafe { frame.header.dst.equals(MAC_ADDR) }
                             || frame.header.dst.equals(BROADCAST_MAC_ADDR)) && (frame.header.src.equals(self.peer_addr)
                             || self.peer_addr.equals(BROADCAST_MAC_ADDR))
@@ -75,6 +78,8 @@ impl Resource for EthernetResource {
                             for (b, d) in buf.iter_mut().zip(frame.data.iter()) {
                                 *b = *d;
                             }
+
+                            debugln!("Receive ethernet {}", frame.data.len());
 
                             return Ok(cmp::min(buf.len(), frame.data.len()));
                         }
