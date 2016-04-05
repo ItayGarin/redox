@@ -68,9 +68,8 @@ impl ArpScheme {
     pub fn reply_loop() {
         while let Ok(mut link) = Url::from_str("ethernet:/806").unwrap().open() {
             loop {
-                let mut bytes = [0; 8192];
+                let mut bytes = [0; 65536];
                 if let Ok(count) = link.read(&mut bytes) {
-                    debugln!("Try ARP parse {}", count);
                     if let Some(packet) = Arp::from_bytes(bytes[.. count].to_vec()) {
                         if packet.header.oper.get() == 1 && packet.header.dst_ip.equals(IP_ADDR) {
                             let mut response = Arp {

@@ -51,7 +51,7 @@ impl Resource for IpResource {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        debugln!("IP Read {}", buf.len());
+        debugln!("    Read ip:{}/{:X}: {}", self.peer_addr.to_string(), self.proto, buf.len());
 
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
@@ -60,6 +60,8 @@ impl Resource for IpResource {
                 if packet.header.proto == self.proto && packet.header.dst.equals(IP_ADDR) && packet.header.src.equals(self.peer_addr) {
                     self.data = packet.data;
                     break;
+                } else {
+                    debugln!("    Ignore ip:{}/{:X}: {}", self.peer_addr.to_string(), self.proto, count);
                 }
             }
         }
@@ -73,11 +75,13 @@ impl Resource for IpResource {
 
         self.data.clear();
 
-        debugln!("Return IP: {}", i);
+        debugln!("    Return ip:{}/{:X}: {}", self.peer_addr.to_string(), self.proto, i);
         return Ok(i);
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        debugln!("    Write ip:{}/{:X}: {}", self.peer_addr.to_string(), self.proto, buf.len());
+
         let ip_data = Vec::from(buf);
 
         self.id += 1;

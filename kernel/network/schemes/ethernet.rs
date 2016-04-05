@@ -52,7 +52,7 @@ impl Resource for EthernetResource {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        debugln!("ETHERNET Read {}", buf.len());
+        debugln!("      Read ethernet:{}/{:X}: {}", self.peer_addr.to_string(), self.ethertype, buf.len());
 
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
@@ -64,6 +64,8 @@ impl Resource for EthernetResource {
                 {
                     self.data = frame.data;
                     break;
+                } else {
+                    debugln!("      Ignore ethernet:{}/{:X}: {}", self.peer_addr.to_string(), self.ethertype, count);
                 }
             }
         }
@@ -77,11 +79,13 @@ impl Resource for EthernetResource {
 
         self.data.clear();
 
-        debugln!("Return ETHERNET: {}", i);
+        debugln!("      Return ethernet:{}/{:X}: {}", self.peer_addr.to_string(), self.ethertype, i);
         return Ok(i);
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        debugln!("      Write ethernet:{}/{:X}: {}", self.peer_addr.to_string(), self.ethertype, buf.len());
+
         let data = Vec::from(buf);
 
         self.network.write(&EthernetII {

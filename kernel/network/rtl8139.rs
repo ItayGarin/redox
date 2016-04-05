@@ -196,9 +196,11 @@ impl Rtl8139 {
             //let frame_status = ptr::read((receive_buffer + capr) as *const u16) as usize;
             let frame_len = ptr::read((receive_buffer + capr + 2) as *const u16) as usize;
 
-            debugln!("Receive {}", frame_len);
+            if frame_len >= 4 {
+                debugln!("        Receive network: {}", frame_len - 4);
 
-            self.inbound.push_back(Vec::from(slice::from_raw_parts(frame_addr as *const u8, frame_len - 4)));
+                self.inbound.push_back(Vec::from(slice::from_raw_parts(frame_addr as *const u8, frame_len - 4)));
+            }
 
             capr = capr + frame_len + 4;
             capr = (capr + 3) & (0xFFFFFFFF - 3);
@@ -214,7 +216,7 @@ impl Rtl8139 {
         while let Some(bytes) = self.outbound.pop_front() {
             if let Some(ref mut txd) = self.txds.get_mut(self.txd_i) {
                 if bytes.len() < 4096 {
-                    debugln!("Send {}", bytes.len());
+                    debugln!("        Send network: {}", bytes.len());
 
                     while !txd.status_port.readf(RTL8139_TSR_OWN) {}
 

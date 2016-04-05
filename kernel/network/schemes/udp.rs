@@ -93,7 +93,7 @@ impl Resource for UdpResource {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        debugln!("UDP Read {}", buf.len());
+        debugln!("  Read udp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, buf.len());
 
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
@@ -102,6 +102,8 @@ impl Resource for UdpResource {
                 if datagram.header.dst.get() == self.host_port && datagram.header.src.get() == self.peer_port {
                     self.data = datagram.data;
                     break;
+                } else {
+                    debugln!("  Ignore udp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, count);
                 }
             }
         }
@@ -115,11 +117,13 @@ impl Resource for UdpResource {
 
         self.data.clear();
 
-        debugln!("Return UDP: {}", i);
+        debugln!("  Return udp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, i);
         return Ok(i);
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        debugln!("  Write udp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, buf.len());
+
         let udp_data = Vec::from(buf);
 
         let mut udp = Udp {
@@ -192,7 +196,6 @@ impl KScheme for UdpScheme {
                                     let ip_remote = ip_reference.split('/').next().unwrap_or("");
                                     let peer_addr = ip_remote.split(':').next().unwrap_or("");
 
-                                    debugln!("Open UDP (listener)");
                                     return Ok(Box::new(UdpResource {
                                         ip: ip,
                                         data: datagram.data,
@@ -209,17 +212,16 @@ impl KScheme for UdpScheme {
         } else {
             let mut remote_parts = remote.split(':');
             let peer_addr = remote_parts.next().unwrap_or("");
-            let peer_port = remote_parts.next().unwrap_or("").parse::<usize>().unwrap_or(0);
-            if peer_port > 0 && peer_port < 65536 {
+            let peer_port = remote_parts.next().unwrap_or("").parse::<u16>().unwrap_or(0);
+            if peer_port > 0 {
                 let host_port = (rand() % 32768 + 32768) as u16;
 
                 if let Ok(ip) = Url::from_str(&format!("ip:{}/11", peer_addr)).unwrap().open() {
-                    debugln!("Open UDP (remote)");
                     return Ok(Box::new(UdpResource {
                         ip: ip,
                         data: Vec::new(),
                         peer_addr: Ipv4Addr::from_string(&peer_addr.to_string()),
-                        peer_port: peer_port as u16,
+                        peer_port: peer_port,
                         host_port: host_port,
                     }));
                 }

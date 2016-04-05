@@ -94,7 +94,7 @@ impl TcpStream {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        debugln!("TCP Read {}", buf.len());
+        debugln!("  Read tcp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, buf.len());
 
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
@@ -142,6 +142,8 @@ impl TcpStream {
 
                     self.data = segment.data;
                     break;
+                } else {
+                    debugln!("  Ignore tcp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, count);
                 }
             }
         }
@@ -155,11 +157,13 @@ impl TcpStream {
 
         self.data.clear();
 
-        debugln!("Return TCP: {}", i);
+        debugln!("  Return tcp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, i);
         return Ok(i);
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
+        debugln!("  Write tcp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, buf.len());
+
         let tcp_data = Vec::from(buf);
 
         let mut tcp = Tcp {

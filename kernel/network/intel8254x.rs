@@ -215,8 +215,10 @@ impl Intel8254x {
         for tail in 0..length / 16 {
             let rd = &mut *receive_ring.offset(tail as isize);
             if rd.status & RD_DD == RD_DD {
+                debugln!("        Read network: {}", rd.length);
+
                 self.inbound.push_back(Vec::from(slice::from_raw_parts(rd.buffer as *const u8, rd.length as usize)));
-                
+
                 rd.status = 0;
             }
         }
@@ -239,6 +241,8 @@ impl Intel8254x {
 
                 if tail != head {
                     if bytes.len() < 16384 {
+                        debugln!("        Send network: {}", bytes.len());
+
                         let td = &mut *transmit_ring.offset(old_tail as isize);
 
                         ::memcpy(td.buffer as *mut u8, bytes.as_ptr(), bytes.len());

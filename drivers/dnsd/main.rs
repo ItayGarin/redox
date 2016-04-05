@@ -37,14 +37,11 @@ fn main(){
         req_class: htons(0x0001),
     };
 
-    let mut socket = File::open("tcp:10.0.2.3:53").unwrap();
+    let mut socket = File::open("udp:10.0.2.3:53").unwrap();
     let sent = socket.write(unsafe { slice::from_raw_parts(&req as *const Dns as *const u8, mem::size_of::<Dns>()) }).unwrap();
+
     socket.flush().unwrap();
 
-    println!("Sent request: {}", sent);
-
-    let mut buf = [0; 8192];
+    let mut buf = [0; 65536];
     let count = socket.read(&mut buf).unwrap();
-
-    println!("Received: {}", count);
 }
