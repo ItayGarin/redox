@@ -3,7 +3,7 @@ use alloc::boxed::Box;
 use collections::string::ToString;
 use collections::vec::Vec;
 
-use core::{cmp, mem};
+use core::cmp;
 
 use common::debug;
 use common::to_num::ToNum;
@@ -52,59 +52,46 @@ impl Resource for EthernetResource {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        if !self.data.is_empty() {
-            let mut data: Vec<u8> = Vec::new();
-            mem::swap(&mut self.data, &mut data);
+        debugln!("ETHERNET Read {}", buf.len());
 
-            for (b, d) in buf.iter_mut().zip(data.iter()) {
-                *b = *d;
-            }
-
-            debugln!("Receive ethernet {}", data.len());
-
-            return Ok(cmp::min(buf.len(), data.len()));
-        }
-
-        loop {
-            let mut bytes = [0; 8192];
-            match self.network.read(&mut bytes) {
-                Ok(count) => {
-                    if let Some(frame) = EthernetII::from_bytes(bytes[.. count].to_vec()) {
-                        debugln!("Ethernet {:?}", frame);
-                        if frame.header.ethertype.get() == self.ethertype && (unsafe { frame.header.dst.equals(MAC_ADDR) }
-                            || frame.header.dst.equals(BROADCAST_MAC_ADDR)) && (frame.header.src.equals(self.peer_addr)
-                            || self.peer_addr.equals(BROADCAST_MAC_ADDR))
-                        {
-                            for (b, d) in buf.iter_mut().zip(frame.data.iter()) {
-                                *b = *d;
-                            }
-
-                            debugln!("Receive ethernet {}", frame.data.len());
-
-                            return Ok(cmp::min(buf.len(), frame.data.len()));
-                        }
-                    }
+        while self.data.is_empty() {
+            let mut bytes = [0; 65536];
+            let count = try!(self.network.read(&mut bytes));
+            if let Some(frame) = EthernetII::from_bytes(bytes[.. count].to_vec()) {
+                if frame.header.ethertype.get() == self.ethertype && (unsafe { frame.header.dst.equals(MAC_ADDR) }
+                    || frame.header.dst.equals(BROADCAST_MAC_ADDR)) && (frame.header.src.equals(self.peer_addr)
+                    || self.peer_addr.equals(BROADCAST_MAC_ADDR))
+                {
+                    self.data = frame.data;
+                    break;
                 }
-                Err(err) => return Err(err),
             }
         }
+
+        // TODO: Allow splitting
+        let mut i = 0;
+        while i < buf.len() && i < self.data.len() {
+            buf[i] = self.data[i];
+            i += 1;
+        }
+
+        self.data.clear();
+
+        debugln!("Return ETHERNET: {}", i);
+        return Ok(i);
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
         let data = Vec::from(buf);
 
-        match self.network.write(&EthernetII {
-                                      header: EthernetIIHeader {
-                                          src: unsafe { MAC_ADDR },
-                                          dst: self.peer_addr,
-                                          ethertype: n16::new(self.ethertype),
-                                      },
-                                      data: data,
-                                  }
-                                  .to_bytes()) {
-            Ok(_) => Ok(buf.len()),
-            Err(err) => Err(err),
-        }
+        self.network.write(&EthernetII {
+            header: EthernetIIHeader {
+                src: unsafe { MAC_ADDR },
+                dst: self.peer_addr,
+                ethertype: n16::new(self.ethertype),
+            },
+            data: data,
+        }.to_bytes()).and(Ok(buf.len()))
     }
 
     fn sync(&mut self) -> Result<()> {

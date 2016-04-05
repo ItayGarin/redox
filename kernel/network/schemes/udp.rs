@@ -93,41 +93,30 @@ impl Resource for UdpResource {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        if !self.data.is_empty() {
-            let mut bytes: Vec<u8> = Vec::new();
-            mem::swap(&mut self.data, &mut bytes);
+        debugln!("UDP Read {}", buf.len());
 
-            // TODO: Allow splitting
-            let i = 0;
-            while i < buf.len() && i < bytes.len() {
-                buf[i] = bytes[i];
-            }
-            debugln!("Return UDP: {}", i);
-            return Ok(i);
-        }
-
-        loop {
-            let mut bytes = [0; 8192];
-            match self.ip.read(&mut bytes) {
-                Ok(count) => {
-                    debugln!("Received: {}", bytes.len());
-                    if let Some(datagram) = Udp::from_bytes(bytes[.. count].to_vec()) {
-                        debugln!("Got UDP: {:?}", datagram);
-                        if datagram.header.dst.get() == self.host_port &&
-                           datagram.header.src.get() == self.peer_port {
-                            // TODO: Allow splitting
-                            let i = 0;
-                            while i < buf.len() && i < datagram.data.len() {
-                                buf[i] = datagram.data[i];
-                            }
-                            debugln!("Return UDP: {}", i);
-                            return Ok(i);
-                        }
-                    }
+        while self.data.is_empty() {
+            let mut bytes = [0; 65536];
+            let count = try!(self.ip.read(&mut bytes));
+            if let Some(datagram) = Udp::from_bytes(bytes[.. count].to_vec()) {
+                if datagram.header.dst.get() == self.host_port && datagram.header.src.get() == self.peer_port {
+                    self.data = datagram.data;
+                    break;
                 }
-                Err(err) => return Err(err),
             }
         }
+
+        // TODO: Allow splitting
+        let mut i = 0;
+        while i < buf.len() && i < self.data.len() {
+            buf[i] = self.data[i];
+            i += 1;
+        }
+
+        self.data.clear();
+
+        debugln!("Return UDP: {}", i);
+        return Ok(i);
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
@@ -160,10 +149,7 @@ impl Resource for UdpResource {
                                   Checksum::sum(udp.data.as_ptr() as usize, udp.data.len()));
         }
 
-        match self.ip.write(&udp.to_bytes()) {
-            Ok(_) => Ok(buf.len()),
-            Err(err) => Err(err),
-        }
+        self.ip.write(&udp.to_bytes()).and(Ok(buf.len()))
     }
 
     fn sync(&mut self) -> Result<()> {

@@ -74,10 +74,9 @@ impl Resource for NetworkResource {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        let bytes = unsafe {
-            (*self.nic).sync();
-            (*self.ptr).inbound.receive()
-        };
+        unsafe { (*self.nic).sync() };
+
+        let bytes = self.inbound.receive();
 
         let mut i = 0;
         while i < bytes.len() && i < buf.len() {
@@ -89,19 +88,16 @@ impl Resource for NetworkResource {
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
-        unsafe {
-            (*self.ptr).outbound.lock().push_back(Vec::from(buf));
+        self.outbound.lock().push_back(Vec::from(buf));
 
-            (*self.nic).sync();
-        }
+        unsafe { (*self.nic).sync() };
 
         Ok(buf.len())
     }
 
     fn sync(&mut self) -> Result<()> {
-        unsafe {
-            (*self.nic).sync();
-        }
+        unsafe { (*self.nic).sync() };
+        
         Ok(())
     }
 }

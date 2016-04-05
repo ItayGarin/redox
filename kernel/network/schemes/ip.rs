@@ -51,38 +51,30 @@ impl Resource for IpResource {
     }
 
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
-        if !self.data.is_empty() {
-            let mut data: Vec<u8> = Vec::new();
-            mem::swap(&mut self.data, &mut data);
+        debugln!("IP Read {}", buf.len());
 
-            for (b, d) in buf.iter_mut().zip(data.iter()) {
-                *b = *d;
-            }
-
-            debugln!("Return IP: {}", data.len());
-            return Ok(cmp::min(buf.len(), data.len()));
-        }
-
-        loop {
-            let mut bytes = [0; 8192];
-            match self.link.read(&mut bytes) {
-                Ok(count) => {
-                    debugln!("Trying ip parse {}", count);
-                    if let Some(packet) = Ipv4::from_bytes(bytes[.. count].to_vec()) {
-                        debugln!("Got IP: {:?}", packet);
-                        if packet.header.proto == self.proto && packet.header.dst.equals(IP_ADDR) &&
-                           packet.header.src.equals(self.peer_addr) {
-                            for (b, d) in buf.iter_mut().zip(packet.data.iter()) {
-                                *b = *d;
-                            }
-                            debugln!("Return IP: {}", packet.data.len());
-                            return Ok(cmp::min(buf.len(), packet.data.len()));
-                        }
-                    }
+        while self.data.is_empty() {
+            let mut bytes = [0; 65536];
+            let count = try!(self.link.read(&mut bytes));
+            if let Some(packet) = Ipv4::from_bytes(bytes[.. count].to_vec()) {
+                if packet.header.proto == self.proto && packet.header.dst.equals(IP_ADDR) && packet.header.src.equals(self.peer_addr) {
+                    self.data = packet.data;
+                    break;
                 }
-                Err(err) => return Err(err),
             }
         }
+
+        // TODO: Allow splitting
+        let mut i = 0;
+        while i < buf.len() && i < self.data.len() {
+            buf[i] = self.data[i];
+            i += 1;
+        }
+
+        self.data.clear();
+
+        debugln!("Return IP: {}", i);
+        return Ok(i);
     }
 
     fn write(&mut self, buf: &[u8]) -> Result<usize> {
@@ -113,10 +105,7 @@ impl Resource for IpResource {
                                   Checksum::sum(ip.options.as_ptr() as usize, ip.options.len()));
         }
 
-        match self.link.write(&ip.to_bytes()) {
-            Ok(_) => Ok(buf.len()),
-            Err(err) => Err(err),
-        }
+        self.link.write(&ip.to_bytes()).and(Ok(buf.len()))
     }
 
     fn sync(&mut self) -> Result<()> {
