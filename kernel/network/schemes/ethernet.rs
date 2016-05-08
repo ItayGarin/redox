@@ -57,6 +57,7 @@ impl Resource for EthernetResource {
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
             let count = try!(self.network.read(&mut bytes));
+            debugln!("      Read from parent ethernet:{}/{:X}: {}", self.peer_addr.to_string(), self.ethertype, count);
             if let Some(frame) = EthernetII::from_bytes(bytes[.. count].to_vec()) {
                 if frame.header.ethertype.get() == self.ethertype && (unsafe { frame.header.dst.equals(MAC_ADDR) }
                     || frame.header.dst.equals(BROADCAST_MAC_ADDR)) && (frame.header.src.equals(self.peer_addr)

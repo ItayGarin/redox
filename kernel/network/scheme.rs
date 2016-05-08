@@ -78,6 +78,8 @@ impl Resource for NetworkResource {
 
         let bytes = self.inbound.receive();
 
+        debugln!("Pop {:X}: {:X}", self as *const Self as usize, self.inbound.inner.lock().deref_mut() as *const VecDeque<Vec<u8>> as usize);
+
         let mut i = 0;
         while i < bytes.len() && i < buf.len() {
             buf[i] = bytes[i];
@@ -97,7 +99,7 @@ impl Resource for NetworkResource {
 
     fn sync(&mut self) -> Result<()> {
         unsafe { (*self.nic).sync() };
-        
+
         Ok(())
     }
 }

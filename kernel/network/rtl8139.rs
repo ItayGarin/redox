@@ -7,6 +7,7 @@ use collections::string::ToString;
 use collections::vec::Vec;
 use collections::vec_deque::VecDeque;
 
+use core::ops::Deref;
 use core::ptr;
 
 use common::debug;
@@ -307,6 +308,7 @@ impl NetworkScheme for Rtl8139 {
 
                 while let Some(bytes) = self.inbound.pop_front() {
                     for resource in resources.iter() {
+                        debugln!("Push {:X}: {:X}", *resource as usize, (**resource).inbound.inner.lock().deref() as *const VecDeque<Vec<u8>> as usize);
                         (**resource).inbound.send(bytes.clone());
                     }
                 }

@@ -56,6 +56,7 @@ impl Resource for IpResource {
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
             let count = try!(self.link.read(&mut bytes));
+            debugln!("    Read from parent ip:{}/{:X}: {}", self.peer_addr.to_string(), self.proto, count);
             if let Some(packet) = Ipv4::from_bytes(bytes[.. count].to_vec()) {
                 if packet.header.proto == self.proto && packet.header.dst.equals(IP_ADDR) && packet.header.src.equals(self.peer_addr) {
                     self.data = packet.data;
@@ -200,10 +201,13 @@ impl KScheme for IpScheme {
                         });
                     }
                 } else {
+                    debugln!("Wait for incoming IP: {}", url.reference());
                     while let Ok(mut link) = Url::from_str("ethernet:/800").unwrap().open() {
-                        let mut bytes = [0; 8192];
+                        debugln!("Accept incoming IP: {}", url.reference());
+                        let mut bytes = [0; 65536];
                         match link.read(&mut bytes) {
                             Ok(count) => {
+                                debugln!("Incoming IP {}: {}", url.reference(), count);
                                 if let Some(packet) = Ipv4::from_bytes(bytes[.. count].to_vec()) {
                                     if packet.header.proto == proto &&
                                        packet.header.dst.equals(IP_ADDR) {
@@ -214,12 +218,17 @@ impl KScheme for IpScheme {
                                             proto: proto,
                                             id: (random::rand() % 65536) as u16,
                                         });
+                                    }else{
+                                        debugln!("Incoming IP {}: Not a matching IPv4 Packet", url.reference());
                                     }
+                                } else {
+                                    debugln!("Incoming IP {}: Not a valid IPv4 Packet", url.reference());
                                 }
                             }
                             Err(_) => break,
                         }
                     }
+                    debugln!("Failed to get incoming IP: {}", url.reference());
                 }
             } else {
                 debug::d("IP: No protocol provided\n");

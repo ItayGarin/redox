@@ -98,6 +98,7 @@ impl Resource for UdpResource {
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
             let count = try!(self.ip.read(&mut bytes));
+            debugln!("  Read from parent udp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, count);
             if let Some(datagram) = Udp::from_bytes(bytes[.. count].to_vec()) {
                 if datagram.header.dst.get() == self.host_port && datagram.header.src.get() == self.peer_port {
                     self.data = datagram.data;
@@ -185,29 +186,42 @@ impl KScheme for UdpScheme {
             let mut remote_parts = remote.split(':');
             let host_port = remote_parts.nth(1).unwrap_or("").parse::<usize>().unwrap_or(0);
             if host_port > 0 && host_port < 65536 {
-                if let Ok(mut ip) = Url::from_str("ip:/11").unwrap().open() {
-                    let mut bytes = [0; 8192];
-                    if let Ok(count) = ip.read(&mut bytes) {
-                        if let Some(datagram) = Udp::from_bytes(bytes[.. count].to_vec()) {
-                            if datagram.header.dst.get() as usize == host_port {
-                                let mut path = [0; 256];
-                                if let Ok(path_count) = ip.path(&mut path) {
-                                    let ip_reference = unsafe { str::from_utf8_unchecked(&path[.. path_count]) }.split(':').nth(1).unwrap_or("");
-                                    let ip_remote = ip_reference.split('/').next().unwrap_or("");
-                                    let peer_addr = ip_remote.split(':').next().unwrap_or("");
+                debugln!("Wait for incoming UDP: {}", url.reference());
+                while let Ok(mut ip) = Url::from_str("ip:/11").unwrap().open() {
+                    debugln!("Accept incoming UDP: {}", url.reference());
+                    let mut bytes = [0; 65536];
+                    match ip.read(&mut bytes) {
+                        Ok(count) => {
+                            debugln!("Incoming UDP {}: {}", url.reference(), count);
+                            if let Some(datagram) = Udp::from_bytes(bytes[.. count].to_vec()) {
+                                if datagram.header.dst.get() as usize == host_port {
+                                    let mut path = [0; 256];
+                                    if let Ok(path_count) = ip.path(&mut path) {
+                                        let ip_reference = unsafe { str::from_utf8_unchecked(&path[.. path_count]) }.split(':').nth(1).unwrap_or("");
+                                        let ip_remote = ip_reference.split('/').next().unwrap_or("");
+                                        let peer_addr = ip_remote.split(':').next().unwrap_or("");
 
-                                    return Ok(Box::new(UdpResource {
-                                        ip: ip,
-                                        data: datagram.data,
-                                        peer_addr: Ipv4Addr::from_string(&peer_addr.to_string()),
-                                        peer_port: datagram.header.src.get(),
-                                        host_port: host_port as u16,
-                                    }));
+                                        return Ok(Box::new(UdpResource {
+                                            ip: ip,
+                                            data: datagram.data,
+                                            peer_addr: Ipv4Addr::from_string(&peer_addr.to_string()),
+                                            peer_port: datagram.header.src.get(),
+                                            host_port: host_port as u16,
+                                        }));
+                                    }
+                                }else{
+                                    debugln!("Incoming UDP {}: Not a matching UDP Packet", url.reference());
                                 }
+                            } else {
+                                debugln!("Incoming UDP {}: Not a valid UDP Packet", url.reference());
                             }
-                        }
+                        },
+                        Err(_) => break
                     }
                 }
+                debugln!("Failed to get incoming UDP: {}", url.reference());
+            } else {
+                debugln!("Invalid port for incoming UDP: {}", host_port);
             }
         } else {
             let mut remote_parts = remote.split(':');
