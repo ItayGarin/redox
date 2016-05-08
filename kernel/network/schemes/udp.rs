@@ -97,6 +97,7 @@ impl Resource for UdpResource {
 
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
+            debugln!("  Attempt read from parent udp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, bytes.len());
             let count = try!(self.ip.read(&mut bytes));
             debugln!("  Read from parent udp:{}:{}/{}: {}", self.peer_addr.to_string(), self.peer_port, self.host_port, count);
             if let Some(datagram) = Udp::from_bytes(bytes[.. count].to_vec()) {
@@ -231,6 +232,7 @@ impl KScheme for UdpScheme {
                 let host_port = (rand() % 32768 + 32768) as u16;
 
                 if let Ok(ip) = Url::from_str(&format!("ip:{}/11", peer_addr)).unwrap().open() {
+                    debugln!("Open UDP: {}", url.reference());
                     return Ok(Box::new(UdpResource {
                         ip: ip,
                         data: Vec::new(),

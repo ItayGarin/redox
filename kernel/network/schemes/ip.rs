@@ -55,6 +55,7 @@ impl Resource for IpResource {
 
         while self.data.is_empty() {
             let mut bytes = [0; 65536];
+            debugln!("    Attempt read from parent ip:{}/{:X}: {}", self.peer_addr.to_string(), self.proto, bytes.len());
             let count = try!(self.link.read(&mut bytes));
             debugln!("    Read from parent ip:{}/{:X}: {}", self.peer_addr.to_string(), self.proto, count);
             if let Some(packet) = Ipv4::from_bytes(bytes[.. count].to_vec()) {
@@ -192,6 +193,7 @@ impl KScheme for IpScheme {
                     }
 
                     if let Ok(link) = Url::from_str(&format!("ethernet:{}/800", &peer_mac.to_string())).unwrap().open(){
+                        debugln!("Open IP: {}", url.reference());
                         return Ok(box IpResource {
                             link: link,
                             data: Vec::new(),
